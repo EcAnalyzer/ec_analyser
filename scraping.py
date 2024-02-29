@@ -964,15 +964,17 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                     df_data.loc[i, '発送地'] = str(tmp)
 
                 # 型番
-                path = '#s_season dd a'
+                path = '#s_season'
                 if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
-                    elems = driver.find_elements(By.CSS_SELECTOR, path)
-                    tmp = ''
-                    for elem in elems:
-                        if tmp != '':
-                            tmp += '<br>'
-                        tmp += elem.text.strip()
-                    df_data.loc[i, '型番'] = str(tmp)
+                    tmp_dt = driver.find_element(By.CSS_SELECTOR, '#s_season dt').text.strip()
+                    if tmp_dt == 'ブランド型番':
+                        elems = driver.find_elements(By.CSS_SELECTOR, '#s_season dd a')
+                        tmp = ''
+                        for elem in elems:
+                            if tmp != '':
+                                tmp += '<br>'
+                            tmp += elem.text.strip()
+                        df_data.loc[i, '型番'] = str(tmp)
 
             if no_item:
                 # 出品が削除されてカテゴリだけ取得
