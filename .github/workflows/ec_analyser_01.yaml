@@ -1,4 +1,4 @@
-name: ec_analyser
+name: ec_analyser_01
 
 on:
   workflow_dispatch:
