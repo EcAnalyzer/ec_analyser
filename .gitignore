@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+login.json
+_backup/
+data/
+work/
+config.json
