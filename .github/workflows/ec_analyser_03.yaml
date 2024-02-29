@@ -32,7 +32,7 @@ jobs:
       - name: Run Python
 
         env:
-          MANAGE_SS_URL: ${{ vars.MANAGE_SS_URL_01 }}
+          MANAGE_SS_URL: ${{ vars.MANAGE_SS_URL_03 }}
 
         run:
           python get_data_main.py
