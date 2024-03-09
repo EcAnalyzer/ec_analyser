@@ -31,6 +31,7 @@ else:
 THREAD_MAX_ORDER = 10
 THREAD_MAX_LIST = 10
 THREAD_MAX_DETAIL = 20
+THREAD_MAX_PRICE = 20
 THREAD_MAX_MARKET = 20
 THREAD_RETRY_MAX = 5
 
@@ -49,6 +50,7 @@ class GetDataStep(Enum):
     UPDATE_RUN_ORDER = '更新中(注文実績)'
     UPDATE_RUN_LIST = '更新中(出品リスト)'
     UPDATE_RUN_ITEM = '更新中(出品データ)'
+    UPDATE_RUN_PRICE = '更新中(価格)'
     UPDATE_RUN_MARKET = '更新中(市場データ)'
     UPDATE_DONE = '更新済'
     UPDATE_ERROR = '更新エラー'
@@ -123,6 +125,7 @@ ITEM_ROW_START = 2              # スプレッドシートの開始行
 # 出品データCSVファイル
 FILE_PATH_ITEM = os.path.join(base_dir, 'item.csv')
 FILE_PATH_DETAIL = os.path.join(base_dir, 'item_detail.csv')
+FILE_PATH_PRICE = os.path.join(base_dir, 'item_price.csv')
 
 # スプレッドシートの列
 ITEM_COLS = ['No.', 'ID', '出品', '取得日時', '商品名', '商品URL', '出品日',
@@ -254,7 +257,6 @@ def set_error_detail(url_manage, index, message):
     # 外注総合管理シート
     set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_ERROR, message)
 
-
 #--------------------------------------------------------------------------------
 # 外注管理情報取得
 #--------------------------------------------------------------------------------
@@ -301,7 +303,6 @@ def get_management_info(url):
         return None
 
     return url_list
-
 
 #--------------------------------------------------------------------------------
 # 注文実績取得
@@ -1002,6 +1003,177 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
 
     driver.quit()
     print_ex(f'[Th.{index+1}] 出品データ(詳細)取得処理 終了')
+    return True
+
+#--------------------------------------------------------------------------------
+# 出品データ取得(価格更新)
+#--------------------------------------------------------------------------------
+def get_item_price_multi(ss_url):
+
+    try:
+        thread_max = THREAD_MAX_PRICE
+
+        # スプレッドシートから出品データ取得
+        data = get_ss_all_values(ss_url, ITEM_SHEET_NAME)
+        data_cols = data[0]
+        data_rows = data[1:]
+        df_data = pd.DataFrame(data_rows, columns=data_cols)
+
+        split_size = int(np.ceil(len(df_data) / thread_max))
+        split_dfs = {}
+
+        for i in range(0, len(df_data), split_size):
+            start_row = i
+            split_df  = df_data.iloc[i:i + split_size].reset_index(drop=True)
+            split_dfs[start_row] = split_df
+
+        # テンポラリファイルを削除
+        FILE_TMP_NAME = 'item_price'
+        FILE_TMP_EXT = 'csv'          
+        file_pattern = f'{FILE_TMP_NAME}*.{FILE_TMP_EXT}'
+        file_pattern = os.path.join(base_dir, file_pattern)
+        delete_files = glob.glob(file_pattern)
+        for file in delete_files:
+            try:
+                os.remove(file)
+            except OSError as e:
+                print_ex(f'ファイル "{file}" の削除中にエラーが発生しました: {e}')
+
+        # スレッド開始
+        threads = []
+        errors = []
+        lock = Lock()
+        for index, (start_row, split_df) in enumerate(split_dfs.items()):
+            thread = Thread(target=get_item_price, args=(ss_url, index, start_row, split_df, errors, lock))
+            threads.append(thread)
+            thread.start()    
+
+        # すべてのスレッドが終了するまで待機
+        for thread in threads:
+            thread.join()
+
+        # エラー確認
+        if errors:
+            for error in errors:
+                print_ex(f'[Th.{error[0]+1}]エラー発生')
+            raise
+
+        # 収集したファイルを連結
+        df_concat = pd.DataFrame()
+        for i in range(thread_max):
+            file_name = f'{FILE_TMP_NAME}_{i + 1}.{FILE_TMP_EXT}'
+            file_path = os.path.join(base_dir, file_name)
+            if os.path.exists(file_path):
+                df = pd.read_csv(file_path,
+                    dtype={'No.': int, 'ID': str}, parse_dates=['取得日時', '出品日'])
+                df_concat = pd.concat([df_concat, df], ignore_index=True)
+
+        df_concat['No.'] = range(1, 1 + len(df_concat))
+        df_concat.to_csv(FILE_PATH_PRICE, index=False)
+
+    except Exception as e:
+        print_ex(f'エラー発生: {e}')
+
+    return
+
+# 出品データ取得(価格更新)
+def get_item_price(ss_url, index, start_row, split_df, errors, lock):
+
+    for i in range(THREAD_RETRY_MAX):
+        result = get_item_price_worker(ss_url, index, start_row, split_df, lock)
+
+        if result:
+            print_ex(f'[Th.{index+1}] 試行 {i+1}回目成功')
+            return
+        else:
+            print_ex(f'[Th.{index+1}] 試行 {i+1}回目失敗')
+
+    print_ex(f'[Th.{index+1}] リトライオーバー')
+
+    with lock:
+        errors.append(index)
+    
+    return
+
+# 出品データ取得(価格更新) タスク
+def get_item_price_worker(ss_url, index, start_row, df_data, lock):
+
+    print_ex(f'[Th.{index+1}] 出品データ(価格更新)取得処理 開始')
+
+    try:
+        driver = get_web_driver(lock)
+        print_ex(f'[Th.{index+1}] Webドライバ初期化 完了')
+
+        for i in range(df_data.shape[0]):
+
+            if df_data['出品'][i] != '出品中':
+                print_ex(f'[Th.{index+1}] 出品データ(価格更新) 取得スキップ: {i + 1} / {df_data.shape[0]}')
+                continue
+
+            # URLアクセス
+            target_url = df_data.loc[i, '商品URL']
+            driver.get(target_url)
+
+            # ページが完全にロードされるまで待機
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+
+            no_item = False
+            path = '.notfoundSection_txt'
+            if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
+
+                if '申し訳ございません' in tmp:
+
+                    path = '#detail_ttl'
+                    if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                        tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
+                        df_data.loc[i, '商品名'] = str(tmp)
+
+                    path = '.n_item_grid li:nth-child(1) a'
+                    if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                        driver.find_element(By.CSS_SELECTOR, path).click()
+                        no_item = True
+
+            # 出品中の未取得
+            if no_item == False:
+                # 価格
+                path = '.js-item-price p'
+                if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                    elems = driver.find_elements(By.CSS_SELECTOR, path)
+
+                    next_hit = False
+                    for elem in elems:
+                        if next_hit:
+                            tmp_dd = elem.text.strip()
+                            tmp = tmp_dd.replace('¥', '')
+                            tmp = tmp.replace(',', '')
+                            df_data.loc[i, '価格'] = str(tmp)
+                            break
+
+                        tmp_dt = elem.text.strip()
+                        if tmp_dt == '価格':
+                            next_hit = True
+
+            if no_item:
+                # 出品が削除されてカテゴリだけ取得
+                df_data.loc[i, '出品'] = '削除'
+
+            print_ex(f'[Th.{index+1}] 出品データ(価格更新) 取得完了: {i + 1} / {df_data.shape[0]}')
+
+        # テンポラリファイルへ出力
+        FILE_TMP_NAME = 'item_price'
+        FILE_TMP_EXT = 'csv'            
+        file_name = f'{FILE_TMP_NAME}_{index+1}.{FILE_TMP_EXT}'
+        file_path = os.path.join(base_dir, file_name)
+        df_data.to_csv(file_path, index=False)
+
+    except Exception as e:
+        driver.quit()
+        print_ex(f'[Th.{index+1}] エラー発生: {str(e)}')
+        return False
+
+    driver.quit()
+    print_ex(f'[Th.{index+1}] 出品データ(価格更新)取得処理 終了')
     return True
 
 #--------------------------------------------------------------------------------

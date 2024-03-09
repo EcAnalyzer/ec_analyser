@@ -61,7 +61,7 @@ def set_ss_all_values(url, sheet, data, start_row=2, start_col=1):
 
         # スプレッドシートを更新
         api_call_check()
-        ws.update(start_a1, data)
+        ws.update(start_a1, data, value_input_option="USER_ENTERED")
         
     except Exception as e:
         print(f'エラー発生: {e}')
@@ -116,7 +116,7 @@ def set_ss_value(url, sheet, row, col, data):
         # スプレッドシートを更新
         api_call_check()
         cell_label = gspread.utils.rowcol_to_a1(row, col)
-        ws.update(cell_label, [[data]])
+        ws.update(cell_label, [[data]], value_input_option="USER_ENTERED")
         
     except Exception as e:
         print(f'エラー発生: {e}')

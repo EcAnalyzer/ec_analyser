@@ -59,6 +59,7 @@ def get_data_main():
                         state == GetDataStep.UPDATE_RUN_ORDER.value or  # 更新中(注文実績)
                         state == GetDataStep.UPDATE_RUN_LIST.value or   # 更新中(出品リスト)
                         state == GetDataStep.UPDATE_RUN_ITEM.value or   # 更新中(出品データ)
+                        state == GetDataStep.UPDATE_RUN_PRICE.value or  # 更新中(価格)
                         state == GetDataStep.UPDATE_RUN_MARKET.value or # 更新中(市場データ)
                         state == GetDataStep.UPDATE_ERROR.value or      # 更新エラー
                         state == GetDataStep.UPDATE_DONE.value):        # 更新済
