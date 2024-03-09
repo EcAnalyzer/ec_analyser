@@ -29,7 +29,7 @@ def get_data_update(url, index, info):
         ss_name = info['sheet_name']     # スプレッドシート名
 
         # 前回更新日時
-        update_dt_utc = datetime.strptime(info['update'], '%Y-%m-%d %H:%M:%S')
+        update_dt_utc = datetime.strptime(info['update'], '%Y/%m/%d %H:%M:%S')
         update_dt = tz.localize(update_dt_utc)
 
         # 状態が未取得, 取得中, エラーの場合に処理する
