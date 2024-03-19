@@ -137,11 +137,11 @@ def get_data_update(url, index, info):
             # 開始時間記録
             dt_start = datetime.now(tz)
 
-            # 差分比較用リスト取得
+            # Webサイトから出品データを取得
             get_item_list_multi(url_item, ITEM_COLS)
             df_list = pd.read_csv(FILE_PATH_ITEM)
 
-            # 出品データ取得
+            # スプレッドシートの出品データ取得
             data = get_ss_all_values(url_sheet, ITEM_SHEET_NAME)
             data_cols = data[0]
             data_rows = data[1:]
@@ -152,7 +152,7 @@ def get_data_update(url, index, info):
             df_item['ID'] = df_item['ID'].astype(str)
             merged_df = pd.merge(df_list, df_item, on='ID', how='outer', indicator=True)
 
-            # 新たに増えた商品データを商品リストに追加
+            # Webサイトに新たに増えた商品データを追加
             df_list_only = merged_df[merged_df['_merge'] == 'left_only']
             df_list_only_ids = df_list_only['ID'].tolist()
             df_add_rows = df_list[df_list['ID'].isin(df_list_only_ids)]
@@ -161,11 +161,17 @@ def get_data_update(url, index, info):
             df_item.loc[df_item['ID'].isin(df_list_only_ids), '出品'] = '未取得'
             df_item.to_csv(FILE_PATH_LIST_INC, index=False)
 
-            # 減った商品データに削除フラグを付ける
+            # スプレッドシートのみに存在する減った商品データに削除フラグを付ける
             df_item_only = merged_df[merged_df['_merge'] == 'right_only']
             df_item_only_ids = df_item_only['ID'].tolist()
             df_item.loc[df_item['ID'].isin(df_item_only_ids), '出品'] = '削除'
             df_item.to_csv(FILE_PATH_LIST_DEC, index=False)
+
+            # 両方に含まれるデータは出品中とする
+            df_both = merged_df[merged_df['_merge'] == 'both']
+            df_both_ids = df_both['ID'].tolist()
+            df_item.loc[df_item['ID'].isin(df_both_ids), '出品'] = '出品中'
+            df_item.to_csv(FILE_PATH_LIST_BOTH, index=False)
 
             # スプレッドシートへ書込み
             df_item.to_csv(FILE_PATH_ITEM, index=False)

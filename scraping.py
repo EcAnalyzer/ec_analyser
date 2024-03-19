@@ -112,6 +112,7 @@ ITEM_COUNT_PER_PAGE = 80        # 1ページ当たりの商品数
 FILE_PATH_LIST = os.path.join(base_dir, 'list.csv')
 FILE_PATH_LIST_INC = os.path.join(base_dir, 'list_inc.csv')
 FILE_PATH_LIST_DEC = os.path.join(base_dir, 'list_dec.csv')
+FILE_PATH_LIST_BOTH = os.path.join(base_dir, 'list_both.csv')
 
 # スプレッドシートの列
 LIST_COLS = ['No.', 'ID', '出品', '取得日時', '商品名', '商品URL', '出品日']
@@ -376,10 +377,10 @@ def get_order_data(dt, url, index, page_start, page_num, errors, lock):
         result = get_order_data_worker(dt, url, index, page_start, page_num, lock)
 
         if result:
-            print_ex(f'[Th.{index+1}] 試行 {i+1} 回目成功')
+            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
-            print_ex(f'[Th.{index+1}] 試行 {i+1} 回目失敗')
+            print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -585,10 +586,10 @@ def get_item_list(dt, url, index, page_start, page_num, errors, lock):
         result = get_item_list_worker(dt, url, index, page_start, page_num, lock)
 
         if result:
-            print_ex(f'[Th.{index+1}] 試行 {i+1}回目成功')
+            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
-            print_ex(f'[Th.{index+1}] 試行 {i+1}回目失敗')
+            print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -762,7 +763,7 @@ def get_item_detail_multi(ss_url):
         df_concat.to_csv(FILE_PATH_DETAIL, index=False)
 
         # 型番のみファイル出力
-        df_model = df_concat[['ID', '商品名', 'ブランド', '型番']]
+        df_model = df_concat[['ID', '商品名', 'ブランド', '型番']].copy()
         df_model['型番'] = df_model['型番'].str.split('<br>')
         df_exploded = df_model.explode('型番')
         df_exploded = df_exploded[df_exploded['型番'].notna()]
@@ -782,10 +783,10 @@ def get_item_detail(ss_url, index, start_row, split_df, errors, lock):
         result = get_item_detail_worker(ss_url, index, start_row, split_df, lock)
 
         if result:
-            print_ex(f'[Th.{index+1}] 試行 {i+1}回目成功')
+            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
-            print_ex(f'[Th.{index+1}] 試行 {i+1}回目失敗')
+            print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -801,12 +802,12 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
 
     try:
         driver = get_web_driver(lock)
-        print_ex(f'[Th.{index+1}] Webドライバ初期化 完了')
+        #print_ex(f'[Th.{index+1}] Webドライバ初期化 完了')
 
         for i in range(df_data.shape[0]):
 
             if df_data['出品'][i] == '削除' or df_data['出品'][i] == '出品中':
-                print_ex(f'[Th.{index+1}] 出品データ(詳細) 取得スキップ: {i + 1} / {df_data.shape[0]}')
+                #print_ex(f'[Th.{index+1}] 出品データ(詳細) 取得スキップ: {i + 1} / {df_data.shape[0]}')
                 continue
 
             # URLアクセス
@@ -967,15 +968,18 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                 # 型番
                 path = '#s_season'
                 if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
-                    tmp_dt = driver.find_element(By.CSS_SELECTOR, '#s_season dt').text.strip()
-                    if tmp_dt == 'ブランド型番':
-                        elems = driver.find_elements(By.CSS_SELECTOR, '#s_season dd a')
-                        tmp = ''
-                        for elem in elems:
-                            if tmp != '':
-                                tmp += '<br>'
-                            tmp += elem.text.strip()
-                        df_data.loc[i, '型番'] = str(tmp)
+                    elems = driver.find_elements(By.CSS_SELECTOR, path)
+                    for elem in elems:
+                        tmp_dt = elem.find_element(By.CSS_SELECTOR, 'dt').text.strip()
+
+                        if tmp_dt == 'ブランド型番':
+                            elems2 = elem.find_elements(By.CSS_SELECTOR, 'dd a')
+                            tmp = ''
+                            for elem2 in elems2:
+                                if tmp != '':
+                                    tmp += '<br>'
+                                tmp += elem2.text.strip()
+                            df_data.loc[i, '型番'] = str(tmp)
 
             if no_item:
                 # 出品が削除されてカテゴリだけ取得
@@ -1083,10 +1087,10 @@ def get_item_price(ss_url, index, start_row, split_df, errors, lock):
         result = get_item_price_worker(ss_url, index, start_row, split_df, lock)
 
         if result:
-            print_ex(f'[Th.{index+1}] 試行 {i+1}回目成功')
+            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
-            print_ex(f'[Th.{index+1}] 試行 {i+1}回目失敗')
+            print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -1245,10 +1249,10 @@ def get_market_data(index, split_df, errors, lock):
         result = get_market_data_worker(index, split_df, lock)
 
         if result:
-            print_ex(f'[Th.{index+1}] 試行 {i+1}回目成功')
+            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
-            print_ex(f'[Th.{index+1}] 試行 {i+1}回目失敗')
+            print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -1280,7 +1284,7 @@ def get_market_data_worker(index, df_data, lock):
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                 tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                 tmp = tmp.replace(',', '')
-                df_data.loc[i, '出品数'] = tmp
+                df_data.loc[i, '出品数'] = int(tmp)
             
             df_data.to_csv(FILE_PATH_MARKET, index=False)
 

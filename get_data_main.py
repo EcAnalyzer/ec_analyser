@@ -71,17 +71,17 @@ def get_data_main():
                         queueUpdate.append({'url': MANAGE_SS_URL[i], 'index': data['index'], 'info': data})
                         break
 
-        # 更新処理
-        while queueUpdate:
-            item = queueUpdate.popleft()
-            get_data_update(item['url'], item['index'], item['info'])
-            time.sleep(60)
-
         # 初期化処理
         while queueInit:
             item = queueInit.popleft()
             get_data_init(item['url'], item['index'], item['info'])
-            time.sleep(60)
+        
+        time.sleep(5)
+
+        # 更新処理
+        while queueUpdate:
+            item = queueUpdate.popleft()
+            get_data_update(item['url'], item['index'], item['info'])
 
     except Exception as e:
         print_ex(f'エラー発生: {e}')

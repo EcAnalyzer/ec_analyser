@@ -224,7 +224,7 @@ def api_call_check():
 
 def main():
     print('テスト実行')
-    
+
 
 if __name__ == "__main__":
     main()
