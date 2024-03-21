@@ -2,8 +2,8 @@ import os
 import time
 import gspread
 from datetime import datetime
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 from tool import print_ex
 
 
@@ -181,14 +181,7 @@ def get_credentials():
 
     try:
         # OAuth認証
-        if os.path.exists(FILE_PATH_TOKEN):
-            credentials = Credentials.from_authorized_user_file(FILE_PATH_TOKEN, SCOPES)
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(FILE_PATH_CREDENTIAL, SCOPES)
-            credentials = flow.run_local_server(port=8080)
-
-            with open(FILE_PATH_TOKEN, 'w') as token:
-                token.write(credentials.to_json())
+        credentials = service_account.Credentials.from_service_account_file(FILE_PATH_CREDENTIAL, scopes=SCOPES)
 
     except Exception as e:
         print_ex(f'エラー発生: {e}')
