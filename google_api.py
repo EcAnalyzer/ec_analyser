@@ -26,7 +26,7 @@ FILE_PATH_TOKEN = os.path.join(base_dir, FILE_NAME_TOKEN)       # リフレッ�
 
 # Google Sheet API 呼出し関連
 PROCESS_WAIT = 60
-API_CALL_LIMIT = 60
+API_CALL_LIMIT = 30
 api_call_count = 0
 api_call_time = datetime.now()
 credentials = None
