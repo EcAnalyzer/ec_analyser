@@ -212,11 +212,17 @@ def get_data_update(url, index, info):
             update_step_proc_time(url_manage, index, MANAGE_COL_UPDATE_STEP + 3 - 1, dt_start, datetime.now(tz))
 
             # ステップ移行
-            diff = datetime.now(tz) - update_dt
-            if diff > timedelta(days=MARKET_DAY_SPAN):
+            update_dt_weekly = get_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_DT)
+            if not update_dt_weekly:
                 state = GetDataStep.UPDATE_RUN_PRICE.value
+                set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_DT, get_dt_str())
             else:
-                state = GetDataStep.UPDATE_DONE.value
+                diff = datetime.now(tz) - datetime.strptime(update_dt_weekly, '%Y/%m/%d %H:%M:%S').astimezone(tz)
+                if diff > timedelta(days=MARKET_DAY_SPAN):
+                    state = GetDataStep.UPDATE_RUN_PRICE.value
+                    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_DT, get_dt_str())
+                else:
+                    state = GetDataStep.UPDATE_DONE.value
 
             print_ex('[St.3] get_data_update 出品データ取得(増分) 終了 ' + ss_name)
 

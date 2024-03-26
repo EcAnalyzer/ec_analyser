@@ -222,6 +222,7 @@ def get_data_init(url, index, info):
             update_proc_end_time(url_manage, url_sheet, index)
             update_proc_time(url_manage, url_sheet, index, dt_start_total, datetime.now(tz))
             update_step_proc_time(url_manage, index, MANAGE_COL_INIT_TOTAL, dt_start_total, datetime.now(tz))
+            set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_DT, get_dt_str())
 
             print_ex('[St.6] get_data_init 終了処理 終了 ' + ss_name)          
 
