@@ -296,7 +296,7 @@ def get_data_update(url, index, info):
             print_ex('[St.6] get_data_update 終了処理 終了 ' + ss_name)
 
     except Exception as e:
-        print_ex(f'エラー発生: {e}')
+        print_ex(f'エラー発生: {str(e)}')
         state = GetDataStep.UPDATE_ERROR.value
         update_proc_status(url_manage, url_sheet, index, state)
 

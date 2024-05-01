@@ -67,8 +67,15 @@ def get_data_main():
                         # 出品データ取得中から再開の場合は出品リスト取得から
                         if state == GetDataStep.UPDATE_RUN_ITEM.value:
                             state = GetDataStep.UPDATE_RUN_LIST.value
+                        
+                        if data['end_date'] == '':
+                            data['end_date'] = '2000/01/01 00:00:00'    # 終了日時が空白なら無条件に処理する
+                        last_date = datetime.strptime(data['end_date'], '%Y/%m/%d %H:%M:%S').astimezone(tz)
+                        now_date = datetime.now(tz)
 
-                        queueUpdate.append({'url': MANAGE_SS_URL[i], 'index': data['index'], 'info': data})
+                        # 本日更新済みならスキップ
+                        if last_date.date() < now_date.date():
+                            queueUpdate.append({'url': MANAGE_SS_URL[i], 'index': data['index'], 'info': data})
                         break
 
         # 初期化処理

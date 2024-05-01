@@ -14,7 +14,7 @@ import glob
 import time
 from selenium.webdriver.support.ui import WebDriverWait
 import json
-
+from functools import wraps
 
 # パス関連
 if os.getenv('GITHUB_ACTIONS') == 'true':
@@ -28,12 +28,17 @@ else:
 #--------------------------------------------------------------------------------
 # 並列化
 #--------------------------------------------------------------------------------
-THREAD_MAX_ORDER = 10
-THREAD_MAX_LIST = 10
-THREAD_MAX_DETAIL = 20
-THREAD_MAX_PRICE = 20
-THREAD_MAX_MARKET = 20
-THREAD_RETRY_MAX = 5
+THREAD_MAX_ORDER = 10        # 10→1に変更
+THREAD_MAX_LIST = 10         # 10→1に変更
+THREAD_MAX_DETAIL = 20       # 20→1に変更
+THREAD_MAX_PRICE = 20        # 20→1に変更
+THREAD_MAX_MARKET = 20       # 20→1に変更
+
+#--------------------------------------------------------------------------------
+# リトライ
+#--------------------------------------------------------------------------------
+THREAD_RETRY_MAX = 120
+THREAD_RETRY_WAIT = 10      # 10秒×120回＝20分(アクセスエラーとなった場合15分間アクセスできない)
 
 #--------------------------------------------------------------------------------
 # 処理状態
@@ -194,13 +199,11 @@ def update_proc_status(url_manage, url_sheet, index, state):
 #--------------------------------------------------------------------------------
 def update_proc_start_time(url_manage, url_sheet, index):
     # 外注総合管理シート
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_START_DT, get_dt_str())    # 開始時間 出力
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_END_DT, '')                # 終了時間 クリア
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_TIME, '')                  # 処理時間 クリア
+    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_START_DT, get_dt_str())   # 開始時間 出力
+    del_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_END_DT, 1, 2)             # 終了時間、処理時間クリア
     # 分析シート
-    set_ss_value(url_sheet, OPE_SHEET_NAME, OPE_ROW_START_DT, OPE_COL_VALUE, get_dt_str())                   # 開始時間 出力
-    set_ss_value(url_sheet, OPE_SHEET_NAME, OPE_ROW_END_DT, OPE_COL_VALUE, '')                               # 終了時間 クリア
-    set_ss_value(url_sheet, OPE_SHEET_NAME, OPE_ROW_TIME, OPE_COL_VALUE, '')                                 # 処理時間 クリア
+    set_ss_value(url_sheet, OPE_SHEET_NAME, OPE_ROW_START_DT, OPE_COL_VALUE, get_dt_str())                  # 開始時間 出力
+    del_ss_value(url_sheet, OPE_SHEET_NAME, OPE_ROW_END_DT, OPE_COL_VALUE, 2, 1)                          # 終了時間、処理時間クリア
 
 #--------------------------------------------------------------------------------
 # 終了時間出力
@@ -232,25 +235,14 @@ def update_step_proc_time(url_manage, index, col, dt_start, dt_end):
 #--------------------------------------------------------------------------------
 def clear_step_proc_time_init(url_manage, index):
     # 外注総合管理シート
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_INIT_TOTAL, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_INIT_STEP + 0, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_INIT_STEP + 1, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_INIT_STEP + 2, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_INIT_STEP + 3, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_INIT_STEP + 4, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_ERROR, '')
+    del_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_INIT_TOTAL, 1, 6)
 
 #--------------------------------------------------------------------------------
 # ステップ処理時間クリア(更新)
 #--------------------------------------------------------------------------------
 def clear_step_proc_time_update(url_manage, index):
     # 外注総合管理シート
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_TOTAL, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_STEP + 0, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_STEP + 1, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_STEP + 2, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_STEP + 3, '')
-    set_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_ERROR, '')
+    del_ss_value(url_manage, MANAGE_SS_NAME, MANAGE_ROW_START + index, MANAGE_COL_UPDATE_TOTAL, 1, 4)
 
 #--------------------------------------------------------------------------------
 # エラー詳細出力
@@ -286,7 +278,8 @@ def get_management_info(url):
             data['create_date'] = row[2]    # 作成日
             data['shop_url'] = row[3]       # ライバルURL
             data['state'] = row[4]          # 状態
-            data['update'] = row[5]         # 更新日時
+            data['update'] = row[5]         # 開始日時
+            data['end_date'] = row[6]       # 終了日時
 
             # 注文実績URL
             shop_id = data['shop_url'].split('/')[-1].split('.html')[0]
@@ -378,10 +371,10 @@ def get_order_data(dt, url, index, page_start, page_num, errors, lock):
         result = get_order_data_worker(dt, url, index, page_start, page_num, lock)
 
         if result:
-            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
             print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
+            time.sleep(THREAD_RETRY_WAIT)
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -412,6 +405,13 @@ def get_order_data_worker(dt, url, index, page_start, page_num, lock):
 
             # ページが完全にロードされるまで待機
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+
+            path = '.title'
+            if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
+                if 'ご利用の端末からアクセス' in tmp:
+                    print_ex(f'[Th.{index+1}] 出品データ(詳細) アクセス上限到達')
+                    raise ValueError('サイトのアクセス上限に到達しました')
 
             path = '.buyeritemtable_body'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
@@ -537,6 +537,7 @@ def get_item_list_multi(url, cols):
         file_pattern = f'{FILE_TMP_NAME}*.{FILE_TMP_EXT}'
         file_pattern = os.path.join(base_dir, file_pattern)
         delete_files = glob.glob(file_pattern)
+
         for file in delete_files:
             try:
                 os.remove(file)
@@ -587,10 +588,10 @@ def get_item_list(dt, url, index, page_start, page_num, errors, lock):
         result = get_item_list_worker(dt, url, index, page_start, page_num, lock)
 
         if result:
-            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
             print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
+            time.sleep(THREAD_RETRY_WAIT)
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -622,6 +623,13 @@ def get_item_list_worker(url, cols, index, page_start, page_num, lock):
 
             # ページが完全にロードされるまで待機
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+
+            path = '.title'
+            if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
+                if 'ご利用の端末からアクセス' in tmp:
+                    print_ex(f'[Th.{index+1}] 出品データ(詳細) アクセス上限到達')
+                    raise ValueError('サイトのアクセス上限に到達しました')
 
             path = '.product_lists li'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
@@ -776,7 +784,6 @@ def get_item_detail_multi(ss_url):
 
     return
 
-
 # 出品データ取得（詳細）
 def get_item_detail(ss_url, index, start_row, split_df, errors, lock):
 
@@ -784,10 +791,10 @@ def get_item_detail(ss_url, index, start_row, split_df, errors, lock):
         result = get_item_detail_worker(ss_url, index, start_row, split_df, lock)
 
         if result:
-            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
             print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
+            time.sleep(THREAD_RETRY_WAIT)
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -803,12 +810,10 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
 
     try:
         driver = get_web_driver(lock)
-        #print_ex(f'[Th.{index+1}] Webドライバ初期化 完了')
 
         for i in range(df_data.shape[0]):
 
             if df_data['出品'][i] == '削除' or df_data['出品'][i] == '出品中':
-                #print_ex(f'[Th.{index+1}] 出品データ(詳細) 取得スキップ: {i + 1} / {df_data.shape[0]}')
                 continue
 
             # URLアクセス
@@ -818,13 +823,19 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
             # ページが完全にロードされるまで待機
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
 
+            path = '.title'
+            if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
+                if 'ご利用の端末からアクセス' in tmp:
+                    print_ex(f'[Th.{index+1}] 出品データ(詳細) アクセス上限到達')
+                    raise ValueError('サイトのアクセス上限に到達しました')
+
             no_item = False
             path = '.notfoundSection_txt'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                 tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
 
                 if '申し訳ございません' in tmp:
-
                     path = '#detail_ttl'
                     if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                         tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
@@ -931,7 +942,7 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                     next_hit = False
                     for elem in elems:
                         if next_hit:
-                            tmp_dd = elem.text.strip()
+                            tmp_dd = elem.find_element(By.CSS_SELECTOR, 'span:first-of-type').text.strip()
                             tmp = tmp_dd.replace('¥', '')
                             tmp = tmp.replace(',', '')
                             df_data.loc[i, '価格'] = str(tmp)
@@ -1093,10 +1104,10 @@ def get_item_price(ss_url, index, start_row, split_df, errors, lock):
         result = get_item_price_worker(ss_url, index, start_row, split_df, lock)
 
         if result:
-            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
             print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
+            time.sleep(THREAD_RETRY_WAIT)
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -1127,13 +1138,19 @@ def get_item_price_worker(ss_url, index, start_row, df_data, lock):
             # ページが完全にロードされるまで待機
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
 
+            path = '.title'
+            if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
+                if 'ご利用の端末からアクセス' in tmp:
+                    print_ex(f'[Th.{index+1}] 出品データ(詳細) アクセス上限到達')
+                    raise ValueError('サイトのアクセス上限に到達しました')
+
             no_item = False
             path = '.notfoundSection_txt'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                 tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
 
                 if '申し訳ございません' in tmp:
-
                     path = '#detail_ttl'
                     if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                         tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
@@ -1154,7 +1171,7 @@ def get_item_price_worker(ss_url, index, start_row, df_data, lock):
                     next_hit = False
                     for elem in elems:
                         if next_hit:
-                            tmp_dd = elem.text.strip()
+                            tmp_dd = elem.find_element(By.CSS_SELECTOR, 'span:first-of-type').text.strip()
                             tmp = tmp_dd.replace('¥', '')
                             tmp = tmp.replace(',', '')
                             df_data.loc[i, '価格'] = str(tmp)
@@ -1163,6 +1180,18 @@ def get_item_price_worker(ss_url, index, start_row, df_data, lock):
                         tmp_dt = elem.text.strip()
                         if tmp_dt == '価格':
                             next_hit = True
+
+                # タグ1
+                # タグ2
+                path = '.itemcomment-disc__detail a'
+                if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                    elems = driver.find_elements(By.CSS_SELECTOR, path)
+                    for elem in elems:
+                        tmp = elem.text.strip()
+                        if '手元に在庫あり' in tmp:
+                            df_data.loc[i, 'タグ1'] = '手元に在庫あり(即発送可能)'
+                        elif 'アウトレット' in tmp:
+                            df_data.loc[i, 'タグ2'] = 'アウトレット'
 
             if no_item:
                 # 出品が削除されてカテゴリだけ取得
@@ -1255,10 +1284,10 @@ def get_market_data(index, split_df, errors, lock):
         result = get_market_data_worker(index, split_df, lock)
 
         if result:
-            #print_ex(f'[Th.{index+1}] {i+1}回目試行成功')
             return
         else:
             print_ex(f'[Th.{index+1}] {i+1}回目試行失敗')
+            time.sleep(THREAD_RETRY_WAIT)
 
     print_ex(f'[Th.{index+1}] リトライオーバー')
 
@@ -1284,6 +1313,13 @@ def get_market_data_worker(index, df_data, lock):
 
             # ページが完全にロードされるまで待機
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+
+            path = '.title'
+            if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
+                tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
+                if 'ご利用の端末からアクセス' in tmp:
+                    print_ex(f'[Th.{index+1}] 出品データ(詳細) アクセス上限到達')
+                    raise ValueError('サイトのアクセス上限に到達しました')
 
             # 該当件数
             path = '#totalitem_num'
