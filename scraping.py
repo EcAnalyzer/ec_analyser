@@ -30,9 +30,9 @@ else:
 #--------------------------------------------------------------------------------
 THREAD_MAX_ORDER = 10
 THREAD_MAX_LIST = 10
-THREAD_MAX_DETAIL = 20  # 20→10
-THREAD_MAX_PRICE = 20   # 20→10
-THREAD_MAX_MARKET = 20  # 20→10
+THREAD_MAX_DETAIL = 1   # 20→1
+THREAD_MAX_PRICE = 1    # 20→1
+THREAD_MAX_MARKET = 1   # 20→1
 
 #--------------------------------------------------------------------------------
 # リトライ
@@ -819,9 +819,6 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
             # URLアクセス
             target_url = df_data.loc[i, '商品URL']
             driver.get(target_url)
-
-            # ★
-            time.sleep(3)
 
             # ページが完全にロードされるまで待機
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
