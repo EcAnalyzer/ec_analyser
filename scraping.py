@@ -515,6 +515,9 @@ def get_item_list_multi(url, cols):
         # ページが完全にロードされるまで待機
         WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
 
+        # ページ最後までスクロール
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
         # ページ数算出
         path = '#totalitem_num'     # 該当件数
         if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
