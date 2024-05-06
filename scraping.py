@@ -30,9 +30,9 @@ else:
 #--------------------------------------------------------------------------------
 THREAD_MAX_ORDER = 10
 THREAD_MAX_LIST = 10
-THREAD_MAX_DETAIL = 10   # 20
-THREAD_MAX_PRICE = 10    # 20
-THREAD_MAX_MARKET = 10   # 20
+THREAD_MAX_DETAIL = 8   # 20
+THREAD_MAX_PRICE = 8    # 20
+THREAD_MAX_MARKET = 8   # 20
 
 #--------------------------------------------------------------------------------
 # リトライ
