@@ -30,9 +30,9 @@ else:
 #--------------------------------------------------------------------------------
 THREAD_MAX_ORDER = 10
 THREAD_MAX_LIST = 10
-THREAD_MAX_DETAIL = 8   # 20
-THREAD_MAX_PRICE = 8    # 20
-THREAD_MAX_MARKET = 8   # 20
+THREAD_MAX_DETAIL = 2   # 20
+THREAD_MAX_PRICE = 2    # 20
+THREAD_MAX_MARKET = 2   # 20
 
 #--------------------------------------------------------------------------------
 # リトライ
@@ -849,15 +849,11 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                         driver.find_element(By.CSS_SELECTOR, path).click()
                         no_item = True
 
-            print_ex(f'[Th.{index+1}] ページ読込完了')
-
             # ブランド
             path = '#s_brand .brand-link'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                 tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                 df_data.loc[i, 'ブランド'] = str(tmp)
-
-            print_ex(f'[Th.{index+1}] ブランド 完了')
 
             # ブランド1
             path = '#s_brand .detail_txt_list li:nth-child(1)'
@@ -865,15 +861,11 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                 tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                 df_data.loc[i, 'ブランド1'] = str(tmp)
 
-            print_ex(f'[Th.{index+1}] ブランド1 完了')
-
             # ブランド1 URL
             path = '#s_brand .detail_txt_list li:nth-child(1) a'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                 tmp = driver.find_element(By.CSS_SELECTOR, path).get_attribute('href')
                 df_data.loc[i, 'ブランド1 URL'] = str(tmp)
-
-            print_ex(f'[Th.{index+1}] ブランド1 URL 完了')
 
             # ブランド2
             path = '#s_brand .detail_txt_list li:nth-child(2)'
@@ -881,15 +873,11 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                 tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                 df_data.loc[i, 'ブランド2'] = str(tmp)
 
-            print_ex(f'[Th.{index+1}] ブランド2 完了')
-
             # ブランド2 URL
             path = '#s_brand .detail_txt_list li:nth-child(2) a'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                 tmp = driver.find_element(By.CSS_SELECTOR, path).get_attribute('href')
                 df_data.loc[i, 'ブランド2 URL'] = str(tmp)
-
-            print_ex(f'[Th.{index+1}] ブランド2 URL 完了')
 
             # ブランド3
             path = '#s_brand .detail_txt_list li:nth-child(3)'
@@ -897,23 +885,17 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                 tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                 df_data.loc[i, 'ブランド3'] = str(tmp)
 
-            print_ex(f'[Th.{index+1}] ブランド3 完了')
-
             # ブランド3 URL
             path = '#s_brand .detail_txt_list li:nth-child(3) a'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                 tmp = driver.find_element(By.CSS_SELECTOR, path).get_attribute('href')
                 df_data.loc[i, 'ブランド3 URL'] = str(tmp)
 
-            print_ex(f'[Th.{index+1}] ブランド3 URL 完了')
-
             # カテゴリ1
             path = '#s_cate .detail_txt_list li:nth-child(1)'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                 tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                 df_data.loc[i, 'カテゴリ1'] = str(tmp)
-
-            print_ex(f'[Th.{index+1}] カテゴリ1 完了')
 
             # カテゴリ2
             path = '#s_cate .detail_txt_list li:nth-child(2)'
@@ -922,8 +904,6 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                 tmp = tmp.replace('>', '').strip()
                 df_data.loc[i, 'カテゴリ2'] = str(tmp)
 
-            print_ex(f'[Th.{index+1}] カテゴリ2 完了')
-
             # カテゴリ3
             path = '#s_cate .detail_txt_list li:nth-child(3)'
             if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
@@ -931,14 +911,9 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                 tmp = tmp.replace('>', '').strip()
                 df_data.loc[i, 'カテゴリ3'] = str(tmp)
 
-            print_ex(f'[Th.{index+1}] カテゴリ3 完了')
-
             # ブランド x カテゴリ3
             tmp = df_data.loc[i, 'ブランド'] + ' x ' + df_data.loc[i, 'カテゴリ3']
             df_data.loc[i, 'ブランド x カテゴリ3'] = tmp
-
-            print_ex(f'[Th.{index+1}] ブランド x カテゴリ3 完了')
-
 
             # 出品中の未取得
             if no_item == False:
@@ -949,15 +924,11 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                     tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                     df_data.loc[i, 'お問い合わせ'] = str(tmp)
 
-                print_ex(f'[Th.{index+1}] お問い合わせ 完了')
-
                 # アクセス
                 path = '.ac_count'
                 if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                     tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                     df_data.loc[i, 'アクセス'] = str(tmp)
-
-                print_ex(f'[Th.{index+1}] アクセス 完了')
 
                 # お気に入りアイテム登録
                 path = '.fav_count'
@@ -965,8 +936,6 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                     tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                     tmp = tmp.replace('人', '')
                     df_data.loc[i, 'お気に入りアイテム登録'] = str(tmp)
-
-                print_ex(f'[Th.{index+1}] お気に入りアイテム登録 完了')
 
                 # 価格
                 path = '.js-item-price p'
@@ -986,8 +955,6 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                         if tmp_dt == '価格':
                             next_hit = True
 
-                    print_ex(f'[Th.{index+1}] 価格 完了')
-
                 # タグ1
                 # タグ2
                 path = '.itemcomment-disc__detail a'
@@ -1000,15 +967,11 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                         elif 'アウトレット' in tmp:
                             df_data.loc[i, 'タグ2'] = 'アウトレット'
 
-                print_ex(f'[Th.{index+1}] タグ 完了')
-
                 # 買付地
                 path = '#s_buying_area a'
                 if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                     tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                     df_data.loc[i, '買付地'] = str(tmp)
-
-                print_ex(f'[Th.{index+1}] 買付地 完了')
 
                 # 買付先名
                 path = '#s_buying_area span'
@@ -1016,15 +979,11 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                     tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                     df_data.loc[i, '買付先名'] = str(tmp)
 
-                print_ex(f'[Th.{index+1}] 買付先名 完了')
-
                 # 発送地
                 path = '#s_shipment_area dd'
                 if len(driver.find_elements(By.CSS_SELECTOR, path)) > 0:
                     tmp = driver.find_element(By.CSS_SELECTOR, path).text.strip()
                     df_data.loc[i, '発送地'] = str(tmp)
-
-                print_ex(f'[Th.{index+1}] 発送地 完了')
 
                 # 型番
                 path = '#s_season'
@@ -1041,8 +1000,6 @@ def get_item_detail_worker(ss_url, index, start_row, df_data, lock):
                                     tmp += '<br>'
                                 tmp += elem2.text.strip()
                             df_data.loc[i, '型番'] = str(tmp)
-
-                print_ex(f'[Th.{index+1}] 型番 完了')
 
             if no_item:
                 # 出品が削除されてカテゴリだけ取得
